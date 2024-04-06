@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import draggable from 'vuedraggable'
-import { watch, onBeforeMount, shallowRef } from 'vue'
+import { watch, onBeforeMount, shallowRef, reactive } from 'vue'
 
 /*
 Example usage:
@@ -36,7 +36,8 @@ Example usage:
     filtering works by passing object of column-name:filter-value.
     you an also modify what the filter value has to be in order to show the value by defining object
     with value (filter value) and modifier (function that takes in filter value and cell value and returns boolean)
-    that will define filter behavior, eg.
+    that will define filter behavior,
+    for example:
 
     const filters = reactive({
       global: '',
@@ -56,6 +57,13 @@ Example usage:
     })
 
     <DataTable ... :filters="filters" />
+
+
+  paginator:
+    in order to add paginator to the table simply add rowCount property to the data table,
+    for example:
+
+    <DataTable ... :rowCount="10" />
 */
 
 type CellValue = number | string | boolean | object
@@ -75,12 +83,21 @@ const props = withDefaults(
     } & {
       global?: string
     }
+    rowCount?: number
   }>(),
   {
     customColumns: () => ({}),
     filters: () => ({})
   }
 )
+const displayedData = shallowRef<DataType>([])
+
+/* COMMON */
+function applyModifiers() {
+  updateFilteredData()
+  sortRows()
+}
+/* END COMMON */
 
 /* HEADERS */
 type HeadersModel = {
@@ -90,8 +107,8 @@ type HeadersModel = {
 
 const headersModel = shallowRef<HeadersModel[]>([])
 
-const updateHeadersModel = (value: Header[]) => {
-  headersModel.value = value.map((header) => ({
+function updateHeadersModel() {
+  headersModel.value = props.headers.map((header) => ({
     __id: `h:${header}`,
     header
   }))
@@ -100,19 +117,16 @@ watch(() => props.headers, updateHeadersModel, { deep: true })
 /* END HEADERS */
 
 /* FILTERS */
-const filteredData = shallowRef<DataType>([])
-
-const updateFilteredData = (value: DataType) => {
+function updateFilteredData() {
   const definedFilters = Object.keys(props.filters)
   if (definedFilters.length === 0) {
-    filteredData.value = value
+    displayedData.value = props.data
     return
   }
 
-  // write a function that filters data based on filter values and puts the result in filteredData
   const isGlobalFilter = props.filters.global !== undefined
 
-  filteredData.value = props.data.filter((dataRow) => {
+  displayedData.value = props.data.filter((dataRow) => {
     let isFilteredOut = false
     const isGloballyFilteredOut =
       isGlobalFilter &&
@@ -143,51 +157,141 @@ const updateFilteredData = (value: DataType) => {
   })
 }
 
-watch(() => props.filters, updateFilteredData, { deep: true })
-watch(() => props.data, updateFilteredData, { deep: true })
+watch(() => props.filters, applyModifiers, { deep: true })
+watch(() => props.data, applyModifiers, { deep: true })
 /* END FILTERS */
+
+/* SORTING */
+type SortDirection = 'None' | 'Ascending' | 'Descending'
+const sortDirection = reactive<{ [key: Header]: SortDirection }>(
+  Object.fromEntries(props.headers.map((h) => [h, 'None']))
+)
+const sortInvocationOrder: Header[] = []
+
+function sortRows(maybeHeader?: Header) {
+  const getOrderCorrection = (header: Header) => {
+    const order = sortDirection[header]
+    switch (order) {
+      case 'Ascending':
+        sortDirection[header] = 'Descending'
+        return -1
+
+      case 'Descending':
+        sortDirection[header] = 'None' // TODO: fix later
+        sortInvocationOrder.splice(sortInvocationOrder.indexOf(header), 1)
+        applyModifiers()
+        return 0
+
+      case 'None':
+        sortDirection[header] = 'Ascending'
+        return 1
+    }
+  }
+
+  const updateOrder = (header: Header, orderCorrection: number = 1) => {
+    if (sortDirection[header] === 'None') {
+      return
+    }
+
+    displayedData.value = [
+      ...displayedData.value.sort((rowA, rowB) => {
+        const [valA, valB] = [rowA[header], rowB[header]]
+        if (valA > valB) return orderCorrection
+        if (valA < valB) return -orderCorrection
+        return 0
+      })
+    ]
+  }
+
+  if (maybeHeader === undefined) {
+    for (const header of sortInvocationOrder) {
+      updateOrder(header)
+    }
+
+    return
+  }
+
+  const sortOrderIdx = sortInvocationOrder.indexOf(maybeHeader)
+  if (sortOrderIdx !== -1) {
+    sortInvocationOrder.splice(sortOrderIdx, 1)
+  }
+  sortInvocationOrder.push(maybeHeader)
+
+  const orderCorrection = getOrderCorrection(maybeHeader)
+  updateOrder(maybeHeader, orderCorrection)
+}
+/* END SORTING */
+
+/* PAGINATOR */
+const currentPage = shallowRef(1)
+/* END PAGINATOR */
 
 /* INIT */
 onBeforeMount(() => {
-  updateHeadersModel(props.headers)
-  updateFilteredData(props.data)
+  updateHeadersModel()
+  updateFilteredData()
 })
 /* END INIT */
 </script>
 
 <template>
+  <div v-if="props.rowCount">
+    Page:
+    <input
+      type="number"
+      min="1"
+      :max="displayedData.length / props.rowCount"
+      v-model="currentPage"
+    />
+  </div>
+  <br />
   <table>
     <thead>
       <draggable v-model="headersModel" tag="tr" item-key="__id">
         <template #item="{ element }">
-          <th>
-            <slot :data="element.header" name="headerItem">{{ element.header }}</slot>
+          <th @click="() => sortRows(element.header)">
+            <slot
+              :data="element.header"
+              :sortDirection="sortDirection[element.header]"
+              name="headerItem"
+            >
+              {{ element.header }}
+              <span v-if="sortDirection[element.header] === 'Ascending'">↑</span>
+              <span v-else-if="sortDirection[element.header] === 'Descending'">↓</span>
+            </slot>
           </th>
         </template>
       </draggable>
     </thead>
 
     <tbody>
-      <tr v-for="(dataEntry, rowIdx) in filteredData" :key="`r:${rowIdx}`">
-        <td v-for="header in headersModel" :key="`r:${rowIdx}h:${header.header}`">
-          <slot
-            v-if="$slots[`col(${header.header})`]"
-            :data="dataEntry[header.header]"
-            :name="`col(${header.header})`"
-          />
-          <slot v-else :data="dataEntry[header.header]" name="dataItem">
-            <template v-if="Object.keys(props.customColumns).includes(header.header)">
-              <component
-                :is="props.customColumns[header.header]"
-                :data="dataEntry[header.header]"
-              />
-            </template>
-            <template v-else>
-              {{ dataEntry[header.header] }}
-            </template>
-          </slot>
-        </td>
-      </tr>
+      <template v-for="(dataEntry, rowIdx) in displayedData" :key="`r:${rowIdx}`">
+        <tr
+          v-if="
+            !props.rowCount ||
+            (rowIdx >= props.rowCount * (currentPage - 1) && rowIdx < props.rowCount * currentPage)
+          "
+        >
+          <td v-for="header in headersModel" :key="`r:${rowIdx}h:${header.header}`">
+            <slot
+              v-if="$slots[`col(${header.header})`]"
+              :data="dataEntry[header.header]"
+              :name="`col(${header.header})`"
+            />
+            <slot v-else :data="dataEntry[header.header]" name="dataItem">
+              <template v-if="Object.keys(props.customColumns).includes(header.header)">
+                <component
+                  :is="props.customColumns[header.header]"
+                  :data="dataEntry[header.header]"
+                />
+              </template>
+              <template v-else>
+                {{ dataEntry[header.header] }}
+              </template>
+            </slot>
+          </td>
+        </tr>
+      </template>
     </tbody>
   </table>
 </template>

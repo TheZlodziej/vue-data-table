@@ -16,9 +16,9 @@ const filters = reactive({
   h2: '',
   h3: {
     value: '',
-    modifier: (filterV: string, cellV: CellValue) => {
-      const v = filterV.toLowerCase()
-      if (cellV) {
+    modifier: (filterVal: string, cellVal: boolean) => {
+      const v = filterVal.toLowerCase()
+      if (cellVal) {
         return v === 'tak'
       } else {
         return v === 'nie'
@@ -34,20 +34,18 @@ const customColumns: { [key: string]: any } = {
   h2: AlertColumn
 }
 
-const data = ref([
-  { h1: 'test', h2: 2, h3: true },
-  { h1: 'test', h2: 1, h3: true },
-  { h1: 'test', h2: 2, h3: false },
-  { h1: 'test1', h2: 2, h3: true },
-  { h1: 'test1', h2: 5, h3: false },
-  { h1: 'test2', h2: 8, h3: false }
-])
+const data = ref<{ h1: string; h2: number; h3: boolean }[]>([])
+
+function onColumnsOrderChanged(order: string[]) {
+  console.log(order)
+}
 
 onMounted(() => {
+  let x = 1
   function generateRandomObject() {
     const randomObject = {
       h1: generateRandomString(),
-      h2: Math.floor(Math.random() * 100), // Generate a random integer between 0 and 99 for h2
+      h2: x++,
       h3: Math.random() < 0.5 // Generate a random boolean for h3
     }
     return randomObject
@@ -96,13 +94,17 @@ onMounted(() => {
     :data="data"
     :customColumns="customColumns"
     :filters="filters"
+    :rowCount="10"
   >
-    <template #headerItem="{ data }">
+    <!-- <template #headerItem="{ data }">
       <h2>
         {{ data }}
       </h2>
-    </template>
+    </template> -->
 
-    <template #col(h3)="{ data }">h3:{{ data }} </template>
+    <template #col(h3)="{ data }"
+      ><div v-if="data">🤙</div>
+      <div v-else>😭</div></template
+    >
   </DataTable>
 </template>
