@@ -41,30 +41,30 @@ function onColumnsOrderChanged(order: string[]) {
 }
 
 onMounted(() => {
-  let x = 1
-  function generateRandomObject() {
-    const randomObject = {
-      h1: generateRandomString(),
-      h2: x++,
-      h3: Math.random() < 0.5 // Generate a random boolean for h3
-    }
-    return randomObject
-  }
-
-  function generateRandomString() {
-    const length = Math.floor(Math.random() * 10) + 1 // Generate a random string length between 1 and 10
-    let result = ''
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length))
-    }
-    return result
-  }
-
   for (let i = 0; i < 500; i++) {
     data.value.push(generateRandomObject())
   }
 })
+
+let x = 1
+function generateRandomObject() {
+  const randomObject = {
+    h1: generateRandomString(),
+    h2: x++,
+    h3: Math.random() < 0.5 // Generate a random boolean for h3
+  }
+  return randomObject
+}
+
+function generateRandomString() {
+  const length = Math.floor(Math.random() * 10) + 1 // Generate a random string length between 1 and 10
+  let result = ''
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length))
+  }
+  return result
+}
 </script>
 
 <template>
@@ -87,6 +87,7 @@ onMounted(() => {
       />
       {{ h.val }}
     </div>
+    <button @click="() => data.push(generateRandomObject())">add row</button>
   </div>
 
   <DataTable
@@ -102,9 +103,9 @@ onMounted(() => {
       </h2>
     </template> -->
 
-    <template #col(h3)="{ data }"
-      ><div v-if="data">🤙</div>
-      <div v-else>😭</div></template
-    >
+    <template #col(h3)="{ data }">
+      <div v-if="data">🤙</div>
+      <div v-else>😭</div>
+    </template>
   </DataTable>
 </template>

@@ -2,6 +2,14 @@
 import draggable from 'vuedraggable'
 import { watch, onBeforeMount, shallowRef, reactive } from 'vue'
 
+// TODO:
+/*
+- fix paginator max (doesnt update when items are added dynamically)
+- fix column reorder:
+  add option to save order to local storage (maybe order parameter?)
+- add displayname to columns
+*/
+
 /*
 Example usage:
   data format:
@@ -247,7 +255,7 @@ onBeforeMount(() => {
   <br />
   <table>
     <thead>
-      <draggable v-model="headersModel" tag="tr" item-key="__id">
+      <draggable v-model="headersModel" tag="tr" item-key="__id" @update="(x) => console.log(x)">
         <template #item="{ element }">
           <th @click="() => sortRows(element.header)">
             <slot
