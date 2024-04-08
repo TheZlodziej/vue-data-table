@@ -233,7 +233,7 @@ onBeforeMount(() => {
   <br />
   <table>
     <thead>
-      <draggable :list="props.headers" tag="tr" item-key="key" @update="(x) => console.log(x)">
+      <draggable :list="props.headers" tag="tr" item-key="key">
         <template #item="{ element }">
           <th @click="() => sortRows(element.key)" v-if="!element.hidden">
             <slot :data="element" :sortDirection="sortDirection[element.key]" name="headerItem">

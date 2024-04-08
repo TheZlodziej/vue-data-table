@@ -35,10 +35,6 @@ const customColumns: { [key: string]: any } = {
 
 const data = ref<{ h1: string; h2: number; h3: boolean }[]>([])
 
-function onColumnsOrderChanged(order: string[]) {
-  console.log(order)
-}
-
 onMounted(() => {
   for (let i = 0; i < 500; i++) {
     data.value.push(generateRandomObject())
@@ -78,7 +74,7 @@ function generateRandomString() {
       h.hidden = !h.hidden
     }
       " style="width: 20px; height: 20px" />
-      {{ h.displayName }}
+      {{ h.displayName ?? h.key }}
     </div>
     <button @click="() => data.push(generateRandomObject())">add row</button>
   </div>
