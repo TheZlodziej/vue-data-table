@@ -5,9 +5,6 @@ import { watch, onBeforeMount, shallowRef, reactive } from 'vue'
 // TODO:
 /*
 - fix paginator max (doesnt update when items are added dynamically)
-- fix column reorder:
-  add option to save order to local storage (maybe order parameter?)
-- add displayname to columns
 */
 
 /*
@@ -82,12 +79,16 @@ type Header = string
 const props = withDefaults(
   defineProps<{
     data: DataType
-    headers: Header[]
+    headers: {
+      key: Header,
+      displayName?: string,
+      hidden?: boolean,
+    }[]
     customColumns: { [key: Header]: any }
     filters: {
       [key: Header]:
-        | string
-        | { value: string; modifier: (filterVal: string, cellVal: CellValue) => boolean }
+      | string
+      | { value: string; modifier: (filterVal: string, cellVal: CellValue) => boolean }
     } & {
       global?: string
     }
@@ -106,23 +107,6 @@ function applyModifiers() {
   sortRows()
 }
 /* END COMMON */
-
-/* HEADERS */
-type HeadersModel = {
-  __id: string
-  header: string
-}
-
-const headersModel = shallowRef<HeadersModel[]>([])
-
-function updateHeadersModel() {
-  headersModel.value = props.headers.map((header) => ({
-    __id: `h:${header}`,
-    header
-  }))
-}
-watch(() => props.headers, updateHeadersModel, { deep: true })
-/* END HEADERS */
 
 /* FILTERS */
 function updateFilteredData() {
@@ -172,7 +156,7 @@ watch(() => props.data, applyModifiers, { deep: true })
 /* SORTING */
 type SortDirection = 'None' | 'Ascending' | 'Descending'
 const sortDirection = reactive<{ [key: Header]: SortDirection }>(
-  Object.fromEntries(props.headers.map((h) => [h, 'None']))
+  Object.fromEntries(props.headers.map((h) => [h.key, 'None']))
 )
 const sortInvocationOrder: Header[] = []
 
@@ -236,7 +220,6 @@ const currentPage = shallowRef(1)
 
 /* INIT */
 onBeforeMount(() => {
-  updateHeadersModel()
   updateFilteredData()
 })
 /* END INIT */
@@ -245,27 +228,18 @@ onBeforeMount(() => {
 <template>
   <div v-if="props.rowCount">
     Page:
-    <input
-      type="number"
-      min="1"
-      :max="displayedData.length / props.rowCount"
-      v-model="currentPage"
-    />
+    <input type="number" min="1" :max="displayedData.length / props.rowCount" v-model="currentPage" />
   </div>
   <br />
   <table>
     <thead>
-      <draggable v-model="headersModel" tag="tr" item-key="__id" @update="(x) => console.log(x)">
+      <draggable :list="props.headers" tag="tr" item-key="key" @update="(x) => console.log(x)">
         <template #item="{ element }">
-          <th @click="() => sortRows(element.header)">
-            <slot
-              :data="element.header"
-              :sortDirection="sortDirection[element.header]"
-              name="headerItem"
-            >
-              {{ element.header }}
-              <span v-if="sortDirection[element.header] === 'Ascending'">↑</span>
-              <span v-else-if="sortDirection[element.header] === 'Descending'">↓</span>
+          <th @click="() => sortRows(element.key)" v-if="!element.hidden">
+            <slot :data="element" :sortDirection="sortDirection[element.key]" name="headerItem">
+              {{ element.displayName ?? element.key }}
+              <span v-if="sortDirection[element.key] === 'Ascending'">↑</span>
+              <span v-else-if="sortDirection[element.key] === 'Descending'">↓</span>
             </slot>
           </th>
         </template>
@@ -274,30 +248,22 @@ onBeforeMount(() => {
 
     <tbody>
       <template v-for="(dataEntry, rowIdx) in displayedData" :key="`r:${rowIdx}`">
-        <tr
-          v-if="
-            !props.rowCount ||
-            (rowIdx >= props.rowCount * (currentPage - 1) && rowIdx < props.rowCount * currentPage)
-          "
-        >
-          <td v-for="header in headersModel" :key="`r:${rowIdx}h:${header.header}`">
-            <slot
-              v-if="$slots[`col(${header.header})`]"
-              :data="dataEntry[header.header]"
-              :name="`col(${header.header})`"
-            />
-            <slot v-else :data="dataEntry[header.header]" name="dataItem">
-              <template v-if="Object.keys(props.customColumns).includes(header.header)">
-                <component
-                  :is="props.customColumns[header.header]"
-                  :data="dataEntry[header.header]"
-                />
-              </template>
-              <template v-else>
-                {{ dataEntry[header.header] }}
-              </template>
-            </slot>
-          </td>
+        <tr v-if="!props.rowCount ||
+    (rowIdx >= props.rowCount * (currentPage - 1) && rowIdx < props.rowCount * currentPage)
+    ">
+          <template v-for="header in props.headers" :key="`r:${rowIdx}h:${header.key}`">
+            <td v-if="!header.hidden">
+              <slot v-if="$slots[`col(${header.key})`]" :data="dataEntry[header.key]" :name="`col(${header.key})`" />
+              <slot v-else :data="dataEntry[header.key]" name="dataItem">
+                <template v-if="Object.keys(props.customColumns).includes(header.key)">
+                  <component :is="props.customColumns[header.key]" :data="dataEntry[header.key]" />
+                </template>
+                <template v-else>
+                  {{ dataEntry[header.key] }}
+                </template>
+              </slot>
+            </td>
+          </template>
         </tr>
       </template>
     </tbody>
@@ -307,7 +273,8 @@ onBeforeMount(() => {
 <style scoped>
 table,
 th,
-td {
+td
+{
   border: 1px solid white;
   border-collapse: collapse;
 }

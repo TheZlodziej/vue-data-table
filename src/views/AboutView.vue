@@ -3,11 +3,12 @@ import DataTable from '../components/DataTable.vue'
 import { ref, computed, reactive, onMounted } from 'vue'
 import TextColumn from '../components/columns/TextColumn.vue'
 import AlertColumn from '../components/columns/AlertColumn.vue'
+import { useLocalStorage } from "@vueuse/core"
 
-const headers = ref<{ vis: boolean; val: 'h1' | 'h2' | 'h3' }[]>([
-  { vis: true, val: 'h1' },
-  { vis: true, val: 'h2' },
-  { vis: true, val: 'h3' }
+const headers = useLocalStorage<{ hidden: boolean; key: 'h1' | 'h2' | 'h3', displayName: string }[]>('table-headers', [
+  { hidden: false, key: 'h1', displayName: "header1" },
+  { hidden: false, key: 'h2', displayName: "header2" },
+  { key: 'h3', }
 ])
 
 const filters = reactive({
@@ -26,8 +27,6 @@ const filters = reactive({
     }
   }
 })
-
-const visibleHeaders = computed(() => headers.value.filter((h) => h.vis).map((h) => h.val))
 
 const customColumns: { [key: string]: any } = {
   h1: TextColumn,
@@ -74,29 +73,17 @@ function generateRandomString() {
       <input v-if="typeof filters[filterKey] === 'string'" v-model="filters[filterKey]" />
       <input v-else v-model="filters[filterKey].value" />
     </div>
-    <div v-for="h in headers" :key="h.val">
-      <input
-        type="checkbox"
-        :value="h.vis"
-        @change="
-          () => {
-            h.vis = !h.vis
-          }
-        "
-        style="width: 20px; height: 20px"
-      />
-      {{ h.val }}
+    <div v-for="h in headers" :key="h.key">
+      <input type="checkbox" :value="h.hidden" @change="() => {
+      h.hidden = !h.hidden
+    }
+      " style="width: 20px; height: 20px" />
+      {{ h.displayName }}
     </div>
     <button @click="() => data.push(generateRandomObject())">add row</button>
   </div>
 
-  <DataTable
-    v-bind:headers="visibleHeaders"
-    :data="data"
-    :customColumns="customColumns"
-    :filters="filters"
-    :rowCount="10"
-  >
+  <DataTable v-bind:headers="headers" :data="data" :customColumns="customColumns" :filters="filters" :rowCount="10">
     <!-- <template #headerItem="{ data }">
       <h2>
         {{ data }}
