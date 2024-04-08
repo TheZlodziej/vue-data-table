@@ -70,7 +70,7 @@ function generateRandomString() {
       <input v-else v-model="filters[filterKey].value" />
     </div>
     <div v-for="h in headers" :key="h.key">
-      <input type="checkbox" :value="h.hidden" @change="() => {
+      <input type="checkbox" :value="h.hidden" :checked="h.hidden" @change="() => {
       h.hidden = !h.hidden
     }
       " style="width: 20px; height: 20px" />

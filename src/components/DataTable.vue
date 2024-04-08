@@ -105,6 +105,8 @@ function applyModifiers() {
 
 /* FILTERS */
 function updateFilteredData() {
+  currentPage.value = 1; // reset paginator
+
   const definedFilters = Object.keys(props.filters)
   if (definedFilters.length === 0) {
     displayedData.value = props.data
