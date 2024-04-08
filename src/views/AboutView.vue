@@ -79,7 +79,7 @@ function generateRandomString() {
     <button @click="() => data.push(generateRandomObject())">add row</button>
   </div>
 
-  <DataTable v-bind:headers="headers" :data="data" :customColumns="customColumns" :filters="filters" :rowCount="10">
+  <DataTable v-bind:headers="headers" :data="data" :customColumns="customColumns" :filters="filters" :maxRows="10">
     <!-- <template #headerItem="{ data }">
       <h2>
         {{ data }}

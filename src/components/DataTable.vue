@@ -2,11 +2,6 @@
 import draggable from 'vuedraggable'
 import { watch, onBeforeMount, shallowRef, reactive } from 'vue'
 
-// TODO:
-/*
-- fix paginator max (doesnt update when items are added dynamically)
-*/
-
 /*
 Example usage:
   data format:
@@ -65,10 +60,10 @@ Example usage:
 
 
   paginator:
-    in order to add paginator to the table simply add rowCount property to the data table,
+    in order to add paginator to the table simply add maxRows property to the data table,
     for example:
 
-    <DataTable ... :rowCount="10" />
+    <DataTable ... :maxRows="10" />
 */
 
 type CellValue = number | string | boolean | object
@@ -92,7 +87,7 @@ const props = withDefaults(
     } & {
       global?: string
     }
-    rowCount?: number
+    maxRows?: number
   }>(),
   {
     customColumns: () => ({}),
@@ -226,9 +221,9 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <div v-if="props.rowCount">
+  <div v-if="props.maxRows">
     Page:
-    <input type="number" min="1" :max="displayedData.length / props.rowCount" v-model="currentPage" />
+    <input type="number" min="1" :max="Math.ceil(displayedData.length / props.maxRows)" v-model="currentPage" />
   </div>
   <br />
   <table>
@@ -248,8 +243,8 @@ onBeforeMount(() => {
 
     <tbody>
       <template v-for="(dataEntry, rowIdx) in displayedData" :key="`r:${rowIdx}`">
-        <tr v-if="!props.rowCount ||
-    (rowIdx >= props.rowCount * (currentPage - 1) && rowIdx < props.rowCount * currentPage)
+        <tr v-if="!props.maxRows ||
+    (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)
     ">
           <template v-for="header in props.headers" :key="`r:${rowIdx}h:${header.key}`">
             <td v-if="!header.hidden">
