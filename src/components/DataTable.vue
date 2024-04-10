@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import draggable from 'vuedraggable'
-import { watch, onBeforeMount, shallowRef, reactive } from 'vue'
+import { watch, onBeforeMount, shallowRef, reactive, computed } from 'vue'
 
 /*
 Example usage:
@@ -213,6 +213,7 @@ function sortRows(maybeHeader?: Header) {
 
 /* PAGINATOR */
 const currentPage = shallowRef(1)
+const paginatorMaxPage = computed(() => Math.ceil(displayedData.value.length / (props.maxRows ?? 1)))
 /* END PAGINATOR */
 
 /* INIT */
@@ -223,11 +224,6 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <div v-if="props.maxRows">
-    Page:
-    <input type="number" min="1" :max="Math.ceil(displayedData.length / props.maxRows)" v-model="currentPage" />
-  </div>
-  <br />
   <table>
     <thead>
       <draggable :list="props.headers" tag="tr" item-key="key">
@@ -246,8 +242,8 @@ onBeforeMount(() => {
     <tbody>
       <template v-for="(dataEntry, rowIdx) in displayedData" :key="`r:${rowIdx}`">
         <tr v-if="!props.maxRows ||
-    (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)
-    ">
+        (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)
+        ">
           <template v-for="header in props.headers" :key="`r:${rowIdx}h:${header.key}`">
             <td v-if="!header.hidden">
               <slot v-if="$slots[`col(${header.key})`]" :data="dataEntry[header.key]" :name="`col(${header.key})`" />
@@ -264,15 +260,60 @@ onBeforeMount(() => {
         </tr>
       </template>
     </tbody>
+    <tfoot>
+      <tr v-if="props.maxRows">
+        <td :colspan="headers.filter(h => !h.hidden).length">
+
+          {{ (currentPage - 1) * props.maxRows + (displayedData.length ? 1 : 0) }} - {{ Math.min(currentPage *
+        props.maxRows, displayedData.length)
+          }} of
+          {{ displayedData.length }}
+
+          <button class="paginator-btn" @click="currentPage = 1">⇤</button>
+          <button class="paginator-btn" @click="currentPage = Math.max(currentPage - 1, 1)">←</button>
+          <button class="paginator-btn" @click="currentPage = Math.min(currentPage + 1, paginatorMaxPage)">→</button>
+          <button class="paginator-btn" @click="currentPage = paginatorMaxPage">⇥</button>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </template>
 
 <style scoped>
+th
+{
+  font-size: 1.2em;
+  cursor: move;
+}
+
 table,
 th,
 td
 {
-  border: 1px solid white;
+  color: rgb(159, 159, 159);
+  border: 1px solid;
   border-collapse: collapse;
+}
+
+th
+{
+  font-weight: bold;
+}
+
+th,
+td
+{
+  padding: 7px 13px;
+}
+
+.paginator-btn
+{
+  border: 1px solid;
+  border-radius: 50%;
+  aspect-ratio: 1/1;
+  font-size: 1.1em;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 </style>

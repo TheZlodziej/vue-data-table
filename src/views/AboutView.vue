@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DataTable from '../components/DataTable.vue'
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import TextColumn from '../components/columns/TextColumn.vue'
 import AlertColumn from '../components/columns/AlertColumn.vue'
 import { useLocalStorage } from "@vueuse/core"
