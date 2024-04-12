@@ -291,7 +291,7 @@ onBeforeMount(() => {
       </tr>
       <draggable :list="props.headers" tag="tr" item-key="key">
         <template #item="{ element }">
-          <th @click="() => sortRows(element.key)" v-if="!element.hidden">
+          <th @click="() => sortRows(element.key)" v-if="!element.hidden" class="reorderable">
             <slot :data="element" :sortDirection="sortDirection[element.key]" name="headerItem">
               {{ element.displayName ?? element.key }}
               <span v-if="sortDirection[element.key] === 'Ascending'">↑</span>
@@ -363,6 +363,10 @@ onBeforeMount(() => {
 th
 {
   font-size: 1.2em;
+}
+
+th.reorderable
+{
   cursor: move;
 }
 
@@ -386,7 +390,7 @@ td
   padding: 7px 13px;
 }
 
-.paginator-btn
+button.paginator-btn
 {
   border: 1px solid;
   border-radius: 50%;
@@ -397,7 +401,7 @@ td
   cursor: pointer;
 }
 
-.expander
+td.expander
 {
   cursor: pointer;
 }
