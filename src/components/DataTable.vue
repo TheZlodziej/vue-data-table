@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import draggable from 'vuedraggable'
-import { watch, onBeforeMount, shallowRef, reactive, computed } from 'vue'
+import { watch, onBeforeMount, shallowRef, reactive, computed, ref } from 'vue'
 
 /*
 Example usage:
@@ -71,9 +71,14 @@ type RowEntry = { [key: string]: CellValue }
 type DataType = RowEntry[]
 type Header = string
 
+type ExtractSymbolKeys<T> = {
+  [K in keyof T]: T[K] extends symbol | string | number ? K : never;
+}[keyof T];
+
 const props = withDefaults(
   defineProps<{
-    data: DataType
+    data: DataType,
+    dataIdKey: ExtractSymbolKeys<DataType>,
     headers: {
       key: Header,
       displayName?: string,
@@ -86,12 +91,18 @@ const props = withDefaults(
       | { value: string; modifier: (filterVal: string, cellVal: CellValue) => boolean }
     } & {
       global?: string
+    },
+    maxRows?: number,
+    translations: {
+      of: string,
     }
-    maxRows?: number
   }>(),
   {
     customColumns: () => ({}),
-    filters: () => ({})
+    filters: () => ({}),
+    translations: () => ({
+      of: "of",
+    })
   }
 )
 const displayedData = shallowRef<DataType>([])
@@ -166,7 +177,7 @@ function sortRows(maybeHeader?: Header) {
         return -1
 
       case 'Descending':
-        sortDirection[header] = 'None' // TODO: fix later
+        sortDirection[header] = 'None'
         sortInvocationOrder.splice(sortInvocationOrder.indexOf(header), 1)
         applyModifiers()
         return 0
@@ -214,7 +225,13 @@ function sortRows(maybeHeader?: Header) {
 /* PAGINATOR */
 const currentPage = shallowRef(1)
 const paginatorMaxPage = computed(() => Math.ceil(displayedData.value.length / (props.maxRows ?? 1)))
+const paginatorCurrentMinItem = computed(() => (currentPage.value - 1) * (props.maxRows ?? 0) + (displayedData.value.length ? 1 : 0));
+const paginatorCurrentMaxItem = computed(() => Math.min(currentPage.value * (props.maxRows ?? 0), displayedData.value.length));
 /* END PAGINATOR */
+
+/* EXPANDED ROWS */
+const expandedRows = ref(Object.fromEntries(props.data.map((row) => [row[props.dataIdKey], false])))
+/* END EXPANDED ROWS */
 
 /* INIT */
 onBeforeMount(() => {
@@ -226,6 +243,9 @@ onBeforeMount(() => {
 <template>
   <table>
     <thead>
+      <tr v-if="$slots.expand">
+        <th rowspan="2"></th>
+      </tr>
       <draggable :list="props.headers" tag="tr" item-key="key">
         <template #item="{ element }">
           <th @click="() => sortRows(element.key)" v-if="!element.hidden">
@@ -244,6 +264,15 @@ onBeforeMount(() => {
         <tr v-if="!props.maxRows ||
         (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)
         ">
+          <td v-if="$slots.expand"
+            @click="expandedRows[dataEntry[props.dataIdKey]] = !expandedRows[dataEntry[props.dataIdKey]]"
+            class="expander">
+            <slot name="expander">
+              <span v-if="expandedRows[dataEntry[props.dataIdKey]]">▲</span>
+              <span v-else>▼</span>
+            </slot>
+          </td>
+
           <template v-for="header in props.headers" :key="`r:${rowIdx}h:${header.key}`">
             <td v-if="!header.hidden">
               <slot v-if="$slots[`col(${header.key})`]" :data="dataEntry[header.key]" :name="`col(${header.key})`" />
@@ -258,17 +287,18 @@ onBeforeMount(() => {
             </td>
           </template>
         </tr>
+
+        <tr v-if="expandedRows[dataEntry[props.dataIdKey]]">
+          <td :colspan="headers.length + 1">
+            <slot name="expand" :data="dataEntry"></slot>
+          </td>
+        </tr>
       </template>
     </tbody>
     <tfoot>
       <tr v-if="props.maxRows">
-        <td :colspan="headers.filter(h => !h.hidden).length">
-
-          {{ (currentPage - 1) * props.maxRows + (displayedData.length ? 1 : 0) }} - {{ Math.min(currentPage *
-        props.maxRows, displayedData.length)
-          }} of
-          {{ displayedData.length }}
-
+        <td :colspan="headers.filter(h => !h.hidden).length + ($slots.expand ? 1 : 0)">
+          {{ paginatorCurrentMinItem }} - {{ paginatorCurrentMaxItem }} {{ translations.of }} {{ displayedData.length }}
           <button class="paginator-btn" @click="currentPage = 1">⇤</button>
           <button class="paginator-btn" @click="currentPage = Math.max(currentPage - 1, 1)">←</button>
           <button class="paginator-btn" @click="currentPage = Math.min(currentPage + 1, paginatorMaxPage)">→</button>
@@ -314,6 +344,11 @@ td
   font-size: 1.1em;
   background: transparent;
   color: inherit;
+  cursor: pointer;
+}
+
+.expander
+{
   cursor: pointer;
 }
 </style>

@@ -5,7 +5,7 @@ import TextColumn from '../components/columns/TextColumn.vue'
 import AlertColumn from '../components/columns/AlertColumn.vue'
 import { useLocalStorage } from "@vueuse/core"
 
-const headers = useLocalStorage<{ hidden: boolean; key: 'h1' | 'h2' | 'h3', displayName: string }[]>('table-headers', [
+const headers = ref([
   { hidden: false, key: 'h1', displayName: "header1" },
   { hidden: false, key: 'h2', displayName: "header2" },
   { key: 'h3', }
@@ -48,7 +48,7 @@ function generateRandomObject() {
     h2: x++,
     h3: Math.random() < 0.5 // Generate a random boolean for h3
   }
-  return randomObject
+  return { ...randomObject, h4: randomObject }
 }
 
 function generateRandomString() {
@@ -79,7 +79,8 @@ function generateRandomString() {
     <button @click="() => data.push(generateRandomObject())">add row</button>
   </div>
 
-  <DataTable v-bind:headers="headers" :data="data" :customColumns="customColumns" :filters="filters" :maxRows="10">
+  <DataTable dataIdKey="h2" v-bind:headers="headers" :data="data" :customColumns="customColumns" :filters="filters"
+    :maxRows="10">
     <!-- <template #headerItem="{ data }">
       <h2>
         {{ data }}
@@ -89,6 +90,10 @@ function generateRandomString() {
     <template #col(h3)="{ data }">
       <div v-if="data">🤙</div>
       <div v-else>😭</div>
+    </template>
+
+    <template #expand="{ data }">
+      {{ Object.values(data.h4).join('\t') }}
     </template>
   </DataTable>
 </template>
