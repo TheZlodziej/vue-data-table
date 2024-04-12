@@ -318,8 +318,8 @@ onBeforeMount(() => {
               @click="expandedRows[dataEntry[props.dataIdKey]] = !expandedRows[dataEntry[props.dataIdKey]]"
               class="expander">
               <slot name="expander">
-                <span v-if="expandedRows[dataEntry[props.dataIdKey]]">▲</span>
-                <span v-else>▼</span>
+                <span v-if="expandedRows[dataEntry[props.dataIdKey]]">▼</span>
+                <span v-else>►</span>
               </slot>
             </td>
 
