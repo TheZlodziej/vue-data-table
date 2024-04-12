@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import draggable from 'vuedraggable'
-import { watch, onBeforeMount, shallowRef, reactive, computed, ref } from 'vue'
+import { watch, onBeforeMount, shallowRef, reactive, computed, ref, useSlots } from 'vue'
 
 /*
 Example usage:
@@ -128,6 +128,7 @@ const props = withDefaults(
     maxRows?: number,
     translations: {
       of: string,
+      noItems: string,
     }
   }>(),
   {
@@ -135,6 +136,7 @@ const props = withDefaults(
     filters: () => ({}),
     translations: () => ({
       of: "of",
+      noItems: "no items"
     })
   }
 )
@@ -272,6 +274,9 @@ const expandedRows = ref(Object.fromEntries(props.data.map((row) => [row[props.d
 /* END EXPANDED ROWS */
 
 /* INIT */
+const slots = useSlots()
+const columnSpan = computed(() => props.headers.filter(h => !h.hidden).length + (slots.expand ? 1 : 0))
+
 onBeforeMount(() => {
   updateFilteredData()
 })
@@ -298,6 +303,13 @@ onBeforeMount(() => {
     </thead>
 
     <tbody>
+      <tr v-if="!displayedData.length">
+        <td :colspan="columnSpan">
+          <slot name="empty">
+            {{ props.translations.noItems }}
+          </slot>
+        </td>
+      </tr>
       <template v-for="(dataEntry, rowIdx) in displayedData" :key="`r:${rowIdx}`">
         <template
           v-if="!props.maxRows || (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)">
@@ -326,7 +338,7 @@ onBeforeMount(() => {
             </template>
           </tr>
           <tr v-if="expandedRows[dataEntry[props.dataIdKey]]">
-            <td :colspan="headers.length + 1">
+            <td :colspan="columnSpan">
               <slot name="expand" :data="dataEntry"></slot>
             </td>
           </tr>
@@ -335,7 +347,7 @@ onBeforeMount(() => {
     </tbody>
     <tfoot>
       <tr v-if="props.maxRows">
-        <td :colspan="headers.filter(h => !h.hidden).length + ($slots.expand ? 1 : 0)">
+        <td :colspan="columnSpan">
           {{ paginatorCurrentMinItem }} - {{ paginatorCurrentMaxItem }} {{ translations.of }} {{ displayedData.length }}
           <button class="paginator-btn" @click="currentPage = 1">⇤</button>
           <button class="paginator-btn" @click="currentPage = Math.max(currentPage - 1, 1)">←</button>

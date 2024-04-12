@@ -5,7 +5,7 @@ import TextColumn from '../components/columns/TextColumn.vue'
 import AlertColumn from '../components/columns/AlertColumn.vue'
 import { useLocalStorage } from "@vueuse/core"
 
-const headers = ref([
+const headers = useLocalStorage('table-columns', [
   { hidden: false, key: 'h1', displayName: "header1" },
   { hidden: false, key: 'h2', displayName: "header2" },
   { hidden: true, key: 'h3', displayName: 'h3' }
