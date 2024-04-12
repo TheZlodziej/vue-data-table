@@ -8,7 +8,7 @@ import { useLocalStorage } from "@vueuse/core"
 const headers = ref([
   { hidden: false, key: 'h1', displayName: "header1" },
   { hidden: false, key: 'h2', displayName: "header2" },
-  { key: 'h3', }
+  { hidden: true, key: 'h3', displayName: 'h3' }
 ])
 
 const filters = reactive({
@@ -79,7 +79,7 @@ function generateRandomString() {
     <button @click="() => data.push(generateRandomObject())">add row</button>
   </div>
 
-  <DataTable dataIdKey="h2" v-bind:headers="headers" :data="data" :customColumns="customColumns" :filters="filters"
+  <DataTable :data="data" dataIdKey="h2" v-bind:headers="headers" :customColumns="customColumns" :filters="filters"
     :maxRows="10">
     <!-- <template #headerItem="{ data }">
       <h2>

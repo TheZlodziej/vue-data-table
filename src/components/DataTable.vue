@@ -64,6 +64,39 @@ Example usage:
     for example:
 
     <DataTable ... :maxRows="10" />
+
+
+  expander:
+    if you have more data to show you can use expanded rows.
+    for example:
+
+    const data = [
+      {
+        h1: 123,
+        h2: {
+          e1: 456,
+          e2: 'test'
+        }
+      },
+      {
+        h1: 456,
+        h2: {
+          e1: 789,
+          e2: 'test2'
+        }
+      },
+    ]
+
+    <DataTable ...>
+      <template #expander={isExpanded}> // no need to define this
+        <span v-if="isExpanded">:)</span>
+        <span v-else>:(</span>
+      </template>  
+
+      <template #expand={ data }> // the important part
+        {{ Object.values(data.h2).join(", ") }}
+      </template>
+    </DataTable>
 */
 
 type CellValue = number | string | boolean | object
@@ -116,8 +149,6 @@ function applyModifiers() {
 
 /* FILTERS */
 function updateFilteredData() {
-  currentPage.value = 1; // reset paginator
-
   const definedFilters = Object.keys(props.filters)
   if (definedFilters.length === 0) {
     displayedData.value = props.data
@@ -155,6 +186,8 @@ function updateFilteredData() {
 
     return !isFilteredOut && !isGloballyFilteredOut
   })
+
+  resetPaginator()
 }
 
 watch(() => props.filters, applyModifiers, { deep: true })
@@ -227,6 +260,11 @@ const currentPage = shallowRef(1)
 const paginatorMaxPage = computed(() => Math.ceil(displayedData.value.length / (props.maxRows ?? 1)))
 const paginatorCurrentMinItem = computed(() => (currentPage.value - 1) * (props.maxRows ?? 0) + (displayedData.value.length ? 1 : 0));
 const paginatorCurrentMaxItem = computed(() => Math.min(currentPage.value * (props.maxRows ?? 0), displayedData.value.length));
+
+function resetPaginator() {
+  if (paginatorCurrentMinItem.value > paginatorCurrentMaxItem.value)
+    currentPage.value = 1; // reset paginator
+}
 /* END PAGINATOR */
 
 /* EXPANDED ROWS */
@@ -261,38 +299,38 @@ onBeforeMount(() => {
 
     <tbody>
       <template v-for="(dataEntry, rowIdx) in displayedData" :key="`r:${rowIdx}`">
-        <tr v-if="!props.maxRows ||
-        (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)
-        ">
-          <td v-if="$slots.expand"
-            @click="expandedRows[dataEntry[props.dataIdKey]] = !expandedRows[dataEntry[props.dataIdKey]]"
-            class="expander">
-            <slot name="expander">
-              <span v-if="expandedRows[dataEntry[props.dataIdKey]]">▲</span>
-              <span v-else>▼</span>
-            </slot>
-          </td>
-
-          <template v-for="header in props.headers" :key="`r:${rowIdx}h:${header.key}`">
-            <td v-if="!header.hidden">
-              <slot v-if="$slots[`col(${header.key})`]" :data="dataEntry[header.key]" :name="`col(${header.key})`" />
-              <slot v-else :data="dataEntry[header.key]" name="dataItem">
-                <template v-if="Object.keys(props.customColumns).includes(header.key)">
-                  <component :is="props.customColumns[header.key]" :data="dataEntry[header.key]" />
-                </template>
-                <template v-else>
-                  {{ dataEntry[header.key] }}
-                </template>
+        <template
+          v-if="!props.maxRows || (rowIdx >= props.maxRows * (currentPage - 1) && rowIdx < props.maxRows * currentPage)">
+          <tr>
+            <td v-if="$slots.expand"
+              @click="expandedRows[dataEntry[props.dataIdKey]] = !expandedRows[dataEntry[props.dataIdKey]]"
+              class="expander">
+              <slot name="expander">
+                <span v-if="expandedRows[dataEntry[props.dataIdKey]]">▲</span>
+                <span v-else>▼</span>
               </slot>
             </td>
-          </template>
-        </tr>
 
-        <tr v-if="expandedRows[dataEntry[props.dataIdKey]]">
-          <td :colspan="headers.length + 1">
-            <slot name="expand" :data="dataEntry"></slot>
-          </td>
-        </tr>
+            <template v-for="header in props.headers" :key="`r:${rowIdx}h:${header.key}`">
+              <td v-if="!header.hidden">
+                <slot v-if="$slots[`col(${header.key})`]" :data="dataEntry[header.key]" :name="`col(${header.key})`" />
+                <slot v-else :data="dataEntry[header.key]" name="dataItem">
+                  <template v-if="Object.keys(props.customColumns).includes(header.key)">
+                    <component :is="props.customColumns[header.key]" :data="dataEntry[header.key]" />
+                  </template>
+                  <template v-else>
+                    {{ dataEntry[header.key] }}
+                  </template>
+                </slot>
+              </td>
+            </template>
+          </tr>
+          <tr v-if="expandedRows[dataEntry[props.dataIdKey]]">
+            <td :colspan="headers.length + 1">
+              <slot name="expand" :data="dataEntry"></slot>
+            </td>
+          </tr>
+        </template>
       </template>
     </tbody>
     <tfoot>
